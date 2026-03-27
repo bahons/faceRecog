@@ -1,0 +1,124 @@
+
+# version: '3.8'
+# services:
+#   db:
+#     image: ankane/pgvector:latest
+#     container_name: facerecog_db
+#     ports:
+#       - "5433:5432"
+#     environment:
+#       POSTGRES_DB: facerecog
+#       POSTGRES_USER: admin
+#       POSTGRES_PASSWORD: 123456
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     restart: always
+
+#   face-analyzer:
+#     build: .
+#     container_name: face_analyzer_gpu
+#     ports:
+#       - "8080:8000"  # Добавь эту строку!
+#     volumes:
+#       - .:/app
+#     environment:
+#       - DATABASE_URL=postgresql://admin:123456@db:5432/facerecog
+#     deploy:
+#       resources:
+#         reservations:
+#           devices:
+#             - driver: nvidia
+#               count: 1
+#               capabilities: [gpu]
+#     depends_on:
+#       - db
+
+#   face-analyzer-trt:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile.trt
+#     container_name: face_analyzer_trt
+#     ports:
+#       - "8081:8000"
+#     volumes:
+#       - .:/app
+#       - ./trt_cache:/app/trt_cache  # Кэш, чтобы не пересобирать модель при каждом запуске
+#     environment:
+#       - DATABASE_URL=postgresql://admin:123456@db:5432/facerecog
+#     deploy:
+#       resources:
+#         reservations:
+#           devices:
+#             - driver: nvidia
+#               count: 1
+#               capabilities: [gpu]
+#     depends_on:
+#       - db
+
+# volumes:
+#   postgres_data:
+
+
+version: '3.8'
+services:
+  db:
+    image: ankane/pgvector:latest
+    container_name: facerecog_db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: facerecog
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # face-analyzer:
+  #   build: 
+  #     context: .
+  #     dockerfile: Dockerfile # Твой первый рабочий конфиг
+  #   container_name: face_analyzer_gpu
+  #   ports:
+  #     - "8080:8000"
+  #   volumes:
+  #     - .:/app
+  #     - ./insightface_models:/root/.insightface/models # Чтобы не качать веса заново
+  #   environment:
+  #     - DATABASE_URL=postgresql://admin:123456@db:5432/facerecog
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   depends_on:
+  #     - db
+
+  face-analyzer-trt:
+    build:
+      context: .
+      dockerfile: Dockerfile.trt # Конфиг на базе devel образа
+    container_name: face_analyzer_trt
+    ports:
+      - "8081:8000"
+    volumes:
+      - .:/app
+      - ./trt_cache:/app/trt_cache
+      - ./insightface_models:/root/.insightface/models
+      - ./pip_cache:/root/.cache/pip
+    environment:
+      - DATABASE_URL=postgresql://admin:123456@db:5432/facerecog
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

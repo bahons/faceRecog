@@ -1,0 +1,10 @@
+venv/
+
+trt_cache/
+
+pip_cache/
+
+insightface_models/
+
+__pycache__/
+

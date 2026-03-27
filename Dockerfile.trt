@@ -1,0 +1,117 @@
+# FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
+
+# # Установка системных зависимостей
+# RUN apt-get update && apt-get install -y \
+#     python3-pip python3-dev libgl1-mesa-glx libglib2.0-0 libpq-dev \
+#     && rm -rf /var/lib/apt/lists/*
+
+# WORKDIR /app
+
+# # Добавляем 'onnx' в список. Это база для всех AI моделей.
+# RUN pip3 install --no-cache-dir \
+#     numpy==1.26.4 \
+#     onnx==1.16.1 \
+#     onnxruntime-gpu==1.17.1 \
+#     opencv-python \
+#     scikit-image \
+#     scikit-learn \
+#     albumentations \
+#     scipy \
+#     matplotlib \
+#     requests \
+#     tqdm \
+#     pillow \
+#     pyyaml \
+#     fastapi \
+#     uvicorn \
+#     python-multipart \
+#     psycopg2-binary \
+#     cython
+
+# # Insightface по-прежнему ставим без зависимостей
+# RUN pip3 install --no-cache-dir insightface --no-deps
+
+# RUN bash -c ' \
+#     find /usr/local/cuda/lib64/ -name "libcublas.so.12*" -exec ln -s {} /usr/local/cuda/lib64/libcublas.so.11 \; && \
+#     find /usr/local/cuda/lib64/ -name "libcublasLt.so.12*" -exec ln -s {} /usr/local/cuda/lib64/libcublasLt.so.11 \; && \
+#     find /usr/local/cuda/lib64/ -name "libcufft.so.11*" -exec ln -s {} /usr/local/cuda/lib64/libcufft.so.10 \; && \
+#     find /usr/lib/x86_64-linux-gnu/ -name "libcudnn.so.9*" -exec ln -s {} /usr/lib/x86_64-linux-gnu/libcudnn.so.8 \; && \
+#     find /usr/lib/x86_64-linux-gnu/ -name "libnvinfer.so.10*" -exec ln -s {} /usr/lib/x86_64-linux-gnu/libnvinfer.so.8 \; && \
+#     find /usr/lib/x86_64-linux-gnu/ -name "libnvparsers.so.10*" -exec ln -s {} /usr/lib/x86_64-linux-gnu/libnvparsers.so.8 \; && \
+#     find /usr/lib/x86_64-linux-gnu/ -name "libnvonnxparsers.so.10*" -exec ln -s {} /usr/lib/x86_64-linux-gnu/libnvonnxparsers.so.8 \
+#     ' || true
+
+# # Прописываем пути к библиотекам (важно для работы CUDA/TRT)
+# #ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+# ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+
+# COPY . .
+
+# RUN mkdir -p /app/trt_cache
+
+# CMD ["uvicorn", "api:api_app", "--host", "0.0.0.0", "--port", "8000"]
+
+# RUN pip3 install --no-cache-dir \
+#     numpy==1.26.4 \
+#     onnx==1.16.1 \
+#     onnxruntime-gpu==1.19.0 \
+#     opencv-python \
+#     scikit-image \
+#     albumentations \
+#     requests \
+#     matplotlib \
+#     scipy \
+#     scikit-learn \
+#     pillow \
+#     tqdm \
+#     pillow \
+#     fastapi \
+#     uvicorn \
+#     python-multipart \
+#     psycopg2-binary \
+#     cython
+
+
+# syntax=docker/dockerfile:1
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+RUN apt-get update && apt-get install -y \
+    python3-pip python3-dev libgl1-mesa-glx libglib2.0-0 libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Указываем дополнительный источник для библиотек NVIDIA
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --no-cache-dir \
+    --extra-index-url https://pypi.nvidia.com \
+    numpy==1.26.4 \
+    onnx==1.16.1 \
+    onnxruntime-gpu==1.19.0 \
+    nvidia-tensorrt \
+    opencv-python \
+    scikit-image \
+    albumentations \
+    requests \
+    matplotlib \
+    scipy \
+    scikit-learn \
+    tqdm \
+    pillow \
+    fastapi \
+    uvicorn \
+    python-multipart \
+    psycopg2-binary \
+    cython
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --no-cache-dir insightface --no-deps
+
+# Добавляем путь к библиотекам TensorRT, которые установил pip
+# (Проверяем путь /usr/local/lib/python3.10/dist-packages/tensorrt_libs)
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/python3.10/dist-packages/tensorrt_libs
+
+COPY . .
+RUN mkdir -p /app/trt_cache
+
+CMD ["uvicorn", "api:api_app", "--host", "0.0.0.0", "--port", "8000"]
