@@ -1,0 +1,7 @@
+FROM python:3.10-slim
+WORKDIR /download
+# Скачиваем всё нужное прямо внутри образа
+RUN pip download onnxruntime-gpu==1.19.0 \
+    nvidia-tensorrt==10.2.0 \
+    --dest /download \
+    --extra-index-url https://pypi.nvidia.com
